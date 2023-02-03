@@ -1,0 +1,477 @@
+---
+title: "IsletCalcium"
+author: "Brian Yandell"
+date: "2022-12-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 7, fig.height = 7)
+```
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(stringr)
+library(foundr) # github/byandell/foundr
+```
+
+# Calcium data
+
+```{r}
+calciumCondData <- readRDS("calciumCondData.rds")
+```
+
+```{r}
+ggplot(calciumCondData %>%
+         filter(!grepl(":Avg", trait),
+                !grepl(":SP", trait))) +
+  aes(value, col = trait) + theme(legend.position = "none") +
+  geom_density() +
+  xlim(c(-5,5))
+```
+
+```{r}
+ggplot(calciumCondData %>%
+         filter(grepl(":SP", trait))) +
+  aes(value, col = trait) +
+  theme(legend.position = "none") +
+  geom_density()
+```
+
+```{r}
+ggplot(calciumCondData %>%
+         filter(grepl(":Avg", trait))) +
+  aes(value, col = trait) +
+  theme(legend.position = "none") +
+  geom_density()
+```
+
+```{r}
+strainplot(
+  calciumCondData %>%
+    filter(trait == "8G:freq_8_1"),
+  condition = "sex")
+```
+
+Following plot uses symbols for sex (diamond = `F`, square = `M`).
+
+```{r}
+strainplot(
+  calciumCondData %>%
+    filter(trait == "8G:freq_8_1"),
+  condition = "sex",
+  shape_sex = TRUE)
+```
+
+```{r}
+strainplot(
+  calciumCondData %>%
+    separate(trait, c("condition","trait"), sep = ":") %>%
+    filter(trait == "freq_8_1"),
+  condition = "condition")
+```
+
+## Signal and Mean by Strain and Sex
+
+```{r}
+calciumCondSignal <- readRDS("calciumCondSignal.rds")
+```
+
+```{r}
+strainplot(
+  calciumCondSignal %>%
+    filter(trait == "8G:SP") %>%
+    rename(value = "signal"),
+  condition = "sex")
+```
+
+```{r}
+strainplot(
+  calciumCondSignal %>%
+    filter(trait == "8G:SP") %>%
+    pivot_longer(signal:mean, names_to = "summary", values_to = "value"),
+  condition = "summary")
+```
+
+## Calcium Summaries
+
+```{r}
+calciumCondPvalue <- readRDS("calciumCondPvalue.rds")
+```
+
+```{r}
+ggplot(
+  calciumCondPvalue %>% 
+    pivot_longer(-trait, names_to = "term", values_to = "pvalue")) +
+  aes(-log10(pvalue), col = term) +
+  geom_density() +
+  scale_y_sqrt()
+```
+
+# Protein data
+
+```{r}
+proteinInfo <- readRDS("proteinInfo.rds")
+```
+
+```{r}
+proteinData <- readRDS("proteinData.rds")
+```
+
+```{r}
+strainplot(
+  proteinData %>%
+    filter(trait %in% c("PP_10","PP_100")),
+  condition = "sex")
+```
+
+```{r}
+proteinSignal <- readRDS("proteinSignal.rds")
+```
+
+```{r}
+strainplot(
+  proteinSignal %>%
+    filter(trait %in% c("PP_10","PP_100")) %>%
+    rename(value = "signal"),
+  shape_sex = TRUE)
+```
+
+```{r}
+strainplot(
+  proteinSignal %>%
+    filter(trait %in% c("PP_10","PP_100")) %>%
+    rename(value = "signal"),
+  shape_sex = TRUE,
+  horizontal = TRUE,
+  boxplot = TRUE)
+```
+
+```{r warning=FALSE}
+proteinPvalue <- readRDS("proteinPvalue.rds")
+```
+
+```{r}
+popular <- c("turquoise", "grey", "blue", "brown", "yellow", "green")
+prots <- 
+  left_join(
+    proteinPvalue,
+    proteinInfo %>%
+      rename(trait = "ID") %>%
+      select(trait, module),
+    by = "trait") %>%
+  mutate(facets = "rest",
+         facets = ifelse(module %in% popular, module, facets),
+         facets = factor(facets, c(popular, "rest")))
+```
+
+```{r warning = FALSE}
+ggplot_module(prots)
+```
+
+
+```{r warning = FALSE}
+ggplot_module(prots, c("p_sex", "p_strain"))
+```
+
+```{r}
+proteinModule <- 
+  left_join(
+    proteinSignal %>%
+      rename(value = "mean") %>%
+      group_by(trait, strain) %>%
+      summarize(
+        value = mean(value, na.rm = TRUE),
+        .groups = "drop") %>%
+      ungroup() %>%
+      group_by(trait) %>%
+      mutate(
+        ranks = rank(value),
+        value = (value - mean(value)) / sd(value)) %>%
+      ungroup(),
+    proteinInfo %>%
+      rename(trait = "ID") %>%
+      select(trait, module),
+    by = "trait") %>%
+  mutate(facets = "rest",
+         facets = ifelse(module %in% popular, module, facets),
+         facets = factor(facets, c(popular, "rest")))
+```
+
+```{r}
+ggplot(proteinModule) +
+  aes(value, strain, col = strain) +
+  ggplot2::scale_color_manual(values = CCcolors) +
+  geom_boxplot(col = "black", fill = NA,
+               outlier.shape = 1, outlier.stroke = 0.25, outlier.size = 3) +
+  geom_jitter(alpha = 0.4, width = 0, size = 0.25) +
+  facet_wrap(~ facets) +
+  ggtitle("standardized strain means by trait within module")
+```
+
+```{r}
+ggplot(proteinModule) +
+  aes(ranks, strain, col = strain) +
+  ggplot2::scale_color_manual(values = CCcolors) +
+  geom_boxplot(col = "black", fill = NA,
+               outlier.shape = 1, outlier.stroke = 0.25, outlier.size = 3) +
+  geom_jitter(width = 0.3, alpha = 0.4, size = 0.25) +
+  facet_wrap(~ facets) +
+  ggtitle("strain ranks by trait within module")
+```
+
+
+# Correlations of Calcium and Protein Signals
+
+The `proteinSignal` and `calciumCondSignal` have values of `strain:sex + strain` with `sex` removed and averaged over animals. These are the approprate units for correlation to focus on the `signal` in each dataset. We first have to create wide data for each, then get the correlations. Note that protein data has no measurements for `NZO` `M`ales. 
+
+#### Correlations for Signals
+
+```{r}
+corProteinCalciumSignal <- readRDS("corProteinCalciumSignal.rds")
+```
+
+#### Correlations for Strain * Sex Means
+
+```{r}
+corProteinCalciumMean <- readRDS("corProteinCalciumMean.rds")
+```
+
+## Scatter Plots
+
+```{r}
+dat_signal <- bind_cols(
+  calciumCondSignal %>%
+    filter(!(strain == "NZO" & sex == "M"),
+           trait == "8G:SP") %>%
+    select(strain, sex, signal) %>%
+    rename(calcium = "signal") %>%
+    arrange(strain, sex),
+  proteinSignal %>%
+    filter(trait == "PP_10") %>%
+    arrange(strain, sex) %>%
+    select(signal) %>%
+    rename(protein = "signal"))
+```
+
+```{r}
+dat_mean <- bind_cols(
+  calciumCondSignal %>%
+    filter(!(strain == "NZO" & sex == "M"),
+           trait == "8G:SP") %>%
+    select(strain, sex, mean) %>%
+    rename(calcium = "mean") %>%
+    arrange(strain, sex),
+  proteinSignal %>%
+    filter(trait == "PP_10") %>%
+    arrange(strain, sex) %>%
+    select(mean) %>%
+    rename(protein = "mean"))
+```
+
+This is beginning idea of what we want.
+
+```{r warning=FALSE}
+ggplot(dat_mean) +
+  aes(x = calcium, y = protein, fill = strain) +
+  geom_smooth(method = "lm", se = FALSE, formula = 'y ~ x', aes(group = sex, linetype = sex)) +
+  geom_point(aes(shape = sex), size = 3, color = "black", alpha = 0.65) +
+  ggplot2::scale_shape_manual(values = c(23, 22)) +
+  ggplot2::scale_fill_manual(values = CCcolors) +
+  ggtitle("protein PP_10 by calcium 8G:SP") +
+  theme(legend.position = "none")
+  
+```
+
+```{r warning = FALSE}
+pp <- strainplot(
+  proteinSignal %>%
+    filter(trait %in% c("PP_10")) %>%
+    rename(value = "signal"),
+  shape_sex = TRUE)
+pc <- strainplot(
+  calciumCondSignal %>%
+    filter(!(strain == "NZO" & sex == "M")) %>%
+    filter(trait %in% c("8G:SP")) %>%
+    rename(value = "signal"),
+  shape_sex = TRUE,
+  horizontal = TRUE)
+ppc <- ggplot(dat_signal) +
+  aes(x = calcium, y = protein, fill = strain) +
+  geom_smooth(method = "lm", se = FALSE, formula = 'y ~ x', aes(group = sex, linetype = sex)) +
+  geom_point(aes(shape = sex), size = 3, color = "black", alpha = 0.65) +
+  ggplot2::scale_shape_manual(values = c(23, 22)) +
+  ggplot2::scale_fill_manual(values = CCcolors) +
+  ggtitle("protein PP_10 by calcium 8G:SP") +
+  theme(legend.position = "none")
+
+patchwork::wrap_plots(ppc, pp, pc, nrow = 2, ncol = 2) +
+  patchwork::plot_annotation(title = "Plots with Signal Only", subtitle = "remove sex effect")
+```
+
+```{r warning=FALSE}
+pp <- strainplot(
+  proteinSignal %>%
+    filter(trait %in% c("PP_10")) %>%
+    rename(value = "mean"),
+  shape_sex = TRUE)
+pc <- strainplot(
+  calciumCondSignal %>%
+    filter(!(strain == "NZO" & sex == "M")) %>%
+    filter(trait %in% c("8G:SP")) %>%
+    rename(value = "mean"),
+  shape_sex = TRUE,
+  horizontal = TRUE)
+ppc <- ggplot(dat_mean) +
+  aes(x = calcium, y = protein, fill = strain) +
+  geom_smooth(method = "lm", se = FALSE, formula = 'y ~ x', aes(group = sex, linetype = sex)) +
+  geom_point(aes(shape = sex), size = 3, color = "black", alpha = 0.65) +
+  ggplot2::scale_shape_manual(values = c(23, 22)) +
+  ggplot2::scale_fill_manual(values = CCcolors) +
+  ggtitle("protein PP_10 by calcium 8G:SP") +
+  theme(legend.position = "none")
+
+patchwork::wrap_plots(ppc, pp, pc, nrow = 2, ncol = 2) +
+  patchwork::plot_annotation(title = "Plots with Mean of log10")
+```
+
+```{r}
+pps <- strainplot(
+  proteinData %>%
+    filter(trait %in% c("PP_10")),
+  shape_sex = TRUE,
+  boxplot = TRUE)
+pcs <- strainplot(
+  calciumCondData %>%
+    filter(!(strain == "NZO" & sex == "M")) %>%
+    filter(trait %in% c("8G:SP")),
+  shape_sex = TRUE,
+  horizontal = TRUE,
+  boxplot = TRUE)
+ppcs <- ggplot(dat_mean) +
+  aes(x = calcium, y = protein, fill = strain) +
+  geom_smooth(method = "lm", se = FALSE, formula = 'y ~ x', aes(group = sex, linetype = sex)) +
+  geom_point(aes(shape = sex), size = 3, color = "black", alpha = 0.65) +
+  ggplot2::scale_shape_manual(values = c(23, 22)) +
+  ggplot2::scale_fill_manual(values = CCcolors) +
+  ggtitle("protein PP_10 by calcium 8G:SP") +
+  theme(legend.position = "none") +
+  xlim(range((calciumCondData %>%
+    filter(!(strain == "NZO" & sex == "M")) %>%
+    filter(trait %in% c("8G:SP")))$value, na.rm = TRUE)) +
+  ylim(range((proteinData %>%
+    filter(trait %in% c("PP_10")))$value, na.rm = TRUE))
+
+patchwork::wrap_plots(ppcs, pps, pcs, nrow = 2, ncol = 2)
+```
+
+The challenge with these plots is that the data are skewed for both the protein and (at least some of the ) calcium traits. We probably should be working on a log scale. Note also the remove of `NZO` males since there are no data on proteins for them; might also consider removing `NZO` females?
+
+Also want to consider whether to plot (and analyze correlations) with the means (mean of logs) or the signals (removing sex main effect). The latter makes sense in terms of removing the ancillary effect that is not of direct study, but it is intuitively challenging. Can add back the mean so the scale is similar (as if the sexes had the same center point).
+
+```{r}
+knitr::knit_exit()
+```
+
+## Scatter Plots for Spectral Data
+
+```{r}
+links <- read_csv(file.path("data", "source.csv"))
+calcfile <- linkpath("calcium", links)
+excel_sheets(calcfile)
+caspectral <- read_excel(calcfile, sheet = 1) %>%
+  rename(freq_8_1 = "8 1st freq.",
+         freq_8_2 = "8 2nd freq.",
+         ampl_8_1 = "8 1st freq. ampl.",
+         ampl_8_2 = "8 2nd freq. ampl.",
+         strain = "Strain",
+         sex = "Sex") %>%
+  select(strain, sex, animal, condition, everything()) %>%
+  pivot_longer(-(strain:condition), names_to = "trait", values_to = "value")
+```
+
+```{r}
+caparam <- read_excel(calcfile, sheet = 2) %>%
+  select(Strain, Sex, Animal, condition, everything()) %>%
+  rename(strain = "Strain",
+         sex = "Sex",
+         animal = "Animal") %>%
+  pivot_longer(-(1:4), names_to = "trait", values_to = "value") %>%
+  filter(condition != "Basal")
+```
+
+
+```{r}
+x <- c("freq_8_1", "freq_8_2")
+scatplot(pivot_pair(caspectral, x), x[1], x[2]) +
+  facet_grid(sex ~ condition)
+```
+
+```{r}
+x <- c("ampl_8_1", "ampl_8_2")
+scatplot(pivot_pair(caspectral, x), x[1], x[2]) +
+  facet_grid(sex ~ condition)
+```
+
+```{r}
+x <- c("freq_8_1", "ampl_8_1")
+scatplot(pivot_pair(caspectral, x), x[1], x[2]) +
+  facet_grid(sex ~ condition)
+```
+
+## Boxplots for parameters
+
+Here is a function to display boxplots. It would be applied in multiple settings.
+
+Calculate boxplots across all parameters.
+
+```{r}
+out <- list()
+dat <- split(caparam %>% unite("cond_sex", condition, sex), caparam$trait)
+for(i in names(dat))
+  out[[i]] <- strainplot(dat[[i]], condition = "cond_sex", boxplot = TRUE)
+```
+
+```{r}
+strainplot(bind_rows(dat[1:2]), condition = "cond_sex")
+```
+
+```{r}
+patchwork::wrap_plots(out[1:2], ncol = 1)
+```
+
+# Correlations
+
+The second file (Protein_to_calcium_correlations.xlsx describes the correlation between calcium parameters and proteins measured in the same sexes and strains of mice on the same diet. It is what would be shown for the pulldown menus (like this one for the protein Apeh for example): Columns A-J describe the proteins (the peptide ID, the protein IDs, gene identifiers and human orthologues' info where there were human orthologues). Columns K onward show the correlation between the protein and the different calcium parameters we derived from our analysis tools. 
+
+One other point I forgot to mention: We had measures for the NZO males for the calcium parameters but did not use them in the correlation analysis because there were not enough islets from the NZO males to do proteomic analyses on. The Zscore calculations for both raw datasets, and the correlation coefficients calculated from them, consequently excluded the NZO males. I mention this because I think the calcium parameter excel file with the raw data has the values for the pooled NZO male islets and we may want to delete or exclude those values to prevent errors. 
+
+
+```{r}
+corfile <- linkpath("cor_prot_calc", links)
+excel_sheets(corfile)
+cacor <- read_excel(corfile, skip = 2, .name_repair = make.names) %>%
+  select(-(ID:Human.Ensembl.or.alternate)) %>%
+  rename(gene = "Human.gene.name") %>%
+  pivot_longer(-(gene), names_to = "trait", values_to = "value") %>%
+  mutate(
+    trait = str_replace(
+      str_replace(
+        str_replace(trait, "X8G", "8G"),
+        "8G\\.QLA", "8G_QLA"),
+      "8G_QLA\\.GIP", "8G_QLA_GIP"),
+    condition = str_remove(trait, "\\..*"),
+    trait = str_remove(trait, "^8[A-Z_]+\\."))
+```
+
+The animals used for protein and calcium measurements were different. Therefore, the correlations are done using measurements on the 16 strain-sex combinations, which requires averaging over the animals. Further, correlations are done separately by condition.
+
+```{r}
+ggplot(cacor %>% filter(condition != "Basal")) +
+  aes(value, col = condition) +
+  facet_wrap(~ trait) +
+#  geom_jitter(col = "gray") +
+  geom_density()
+  
+```

@@ -1,0 +1,363 @@
+---
+title: "IsletCalcium"
+author: "Brian Yandell"
+date: "2022-12-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 7, fig.height = 7)
+```
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(stringr)
+library(foundr) # github/byandell/foundr
+```
+
+Data for this repository are identified by `data/source.csv`,
+which is not saved with the repo.
+
+```{r}
+links <- read_csv(file.path("data", "source.csv"))
+```
+
+# Background
+
+## Updated 12 Jan 2023
+
+```
+From: CHRISTOPHER H EMFINGER <emfinger@wisc.edu>
+Date: Thursday, January 12, 2023 at 2:39 PM
+To: Brian Yandell <brian.yandell@wisc.edu>
+Subject: Re: Islet Calcium resource
+```
+
+I have added a folder in the research drive `/Volumes/adattie/General/founder_calcium_website` that corresponds to the files with the updated terms so everything's easier to track. It's in a new subfolder called `updated files`. The `correlations` subfolder should have the correlation data with the updated nomenclature to be more matched term for term. Is that what you'd needed?
+
+Also in the subfolder is one with the `raw_data` (each animal's average for the calcium in the calcium study). I included the proteomic raw data as well. Please note that the individual animal IDs from the proteomic study and the calcium study are not related. The two studies use different animal sets.
+
+## Original 
+
+Stimulate insulin secretion in beta cells, there is calcium activities. We have
+the founders and mRNA. Enter protein or parameter and find correlation across mice.
+
+The relevant data and a small ppt summarizing our "artists' impression" of what the resource might look like are on the [UW ResearchDrive](https://it.wisc.edu/services/researchdrive/) at </Volumes/adattie/General/founder_calcium_website/>.
+
+The first file (Calcium_parameter_data.xlsx) would be used to plot the distributions of the various calcium parameters (the boxplots in the slides). It has two tabs. We moved the islets through four solutions and analyzed the calcium trace segments in each solution. The tools we used to analyze the islet calcium waves gave us certain parameters describing their shapes and were made in Matlab (matlab data tab) and R (the spectral density data tab). 
+
+For the matlab data tab, the column names for columns A-F and H-K are calcium parameters. The "condition" column (column G) defines what solution the islets were in for the period of time that the analysis was performed. Columns L-N describe the mice (strain, sex and ID). 
+
+Basal calcium "condition" is used to normalize some of the other measurements but is of interest itself as a measurement because it can be an indicator of islet functionality. 
+
+For the spectral density tab, A-D describe the calcium parameters related to spectral density. Column E is the animal ID, column F is the solution the islets were in for that trace segment analyzed, and column G and H describe the mouse strain and sex, respectively. 
+
+# Calcium data
+
+## Calcium data converted to normal scores
+
+Combine parameter and spectral data, and convert trait values to normal scores.
+
+```{r}
+calcfile <- linkpath("calcium", links)
+excel_sheets(calcfile)
+```
+
+```{r}
+if(file.exists(rdsfile <- "calciumData.rds")) {
+  calciumData <- readRDS(rdsfile)
+} else {
+  calciumData <- 
+    bind_rows(
+      read_excel(calcfile, sheet = 1) %>%
+        rename(freq_8_1 = "8 1st freq.",
+               freq_8_2 = "8 2nd freq.",
+               ampl_8_1 = "8 1st freq. ampl.",
+               ampl_8_2 = "8 2nd freq. ampl.",
+               strain = "Strain",
+               sex = "Sex") %>%
+        select(strain, sex, animal, condition, everything()) %>%
+        pivot_longer(-(strain:condition), names_to = "trait", values_to = "value"),
+      read_excel(calcfile, sheet = 2) %>%
+        select(Strain, Sex, Animal, condition, everything()) %>%
+        rename(strain = "Strain",
+               sex = "Sex",
+               animal = "Animal") %>%
+        pivot_longer(-(1:4), names_to = "trait", values_to = "value") %>%
+        filter(condition != "Basal")) %>%
+    group_by(trait) %>%
+    mutate(value = foundr::nqrank(value)) %>%
+    ungroup()
+
+  saveRDS(calciumData, rdsfile)
+}
+rm(rdsfile)
+```
+
+```{r}
+if(file.exists(rdsfile <- "calciumCondData.rds")) {
+  calciumCondData <- readRDS(rdsfile)
+} else {
+  calciumCondData <- calciumData %>%
+    unite(trait, condition, trait, sep = ":")
+
+  saveRDS(calciumCondData, rdsfile)
+}
+rm(rdsfile)
+```
+
+## Calcium signal
+
+```{r}
+if(file.exists(rdsfile <- "calciumSignal.rds")) {
+  calciumSignal <- readRDS(rdsfile)
+} else {
+  calciumSignal <- 
+    partition(
+      calciumData,
+      trait = "trait",
+      signal = "strain * sex * condition",
+      ancillary = "strain * sex + condition * sex")
+
+  saveRDS(calciumSignal, rdsfile)
+}
+rm(rdsfile)
+```
+
+```{r}
+if(file.exists(rdsfile <- "calciumCondSignal.rds")) {
+  calciumCondSignal <- readRDS(rdsfile)
+} else {
+  calciumCondSignal <- 
+    partition(
+      calciumCondData,
+      trait = "trait",
+      signal = "strain * sex",
+      ancillary = "sex")
+
+  saveRDS(calciumCondSignal, rdsfile)
+}
+rm(rdsfile)
+```
+
+## Calcium P-Value Summaries
+
+```{r}
+if(file.exists(rdsfile <- "calciumPvalue.rds")) {
+  calciumPvalue <- readRDS(rdsfile)
+} else {
+  calciumPvalue <- broomit(
+    calciumData,
+    signal = "strain * condition * sex",
+    ancillary = "strain * sex + condition * sex") %>%
+    arrange(p_signal)
+  
+  saveRDS(calciumPvalue, rdsfile)
+}
+rm(rdsfile)
+```
+
+```{r}
+calciumPvalue %>%
+  mutate(
+    across(
+      where(
+        is.numeric),
+      function(x) signif(x, 4))) %>%
+  filter(p_signal < 0.1)
+```
+
+```{r}
+if(file.exists(rdsfile <- "calciumCondPvalue.rds")) {
+  calciumCondPvalue <- readRDS(rdsfile)
+} else {
+  calciumCondPvalue <- broomit(
+    calciumCondData,
+    signal = "strain * sex",
+    ancillary = "sex") %>%
+    arrange(p_signal)
+  
+  saveRDS(calciumCondPvalue, rdsfile)
+}
+rm(rdsfile)
+```
+
+# Protein data
+
+```{r}
+protfile <- linkpath("protein", links)
+excel_sheets(protfile)
+```
+
+```{r}
+if(file.exists(rdsfile <- "proteinInfo.rds")) {
+  proteinInfo <- readRDS(rdsfile)
+} else {
+  proteinInfo <- read_excel(protfile, sheet = 3, skip = 2) %>%
+    select(ID:Gene_ID, kTotal:module) %>%
+    distinct(ID, .keep_all = TRUE)
+  
+  saveRDS(proteinInfo, rdsfile)
+}
+rm(rdsfile)
+```
+
+```{r}
+if(file.exists(rdsfile <- "proteinData.rds")) {
+  proteinData <- readRDS(rdsfile)
+} else {
+  proteinData <- read_excel(protfile, sheet = 3, skip = 2) %>%
+    select(ID, "129.1.F":"WSB.9.F") %>%
+    rename(trait = "ID") %>%
+    pivot_longer(-trait, names_to = "animal", values_to = "value") %>%
+    mutate(strain = str_remove(animal, "\\..*$"),
+           sex = str_remove(animal, "^.*\\.")) %>%
+    # Remove NAs and do log10 transform
+    filter(!is.na(value)) %>%
+    mutate(value = log10(value)) %>%
+    select(strain, sex, animal, trait, value)
+  
+  saveRDS(proteinData, rdsfile)
+}
+rm(rdsfile)
+```
+
+```{r}
+if(file.exists(rdsfile <- "proteinSignal.rds")) {
+  proteinSignal <- readRDS(rdsfile)
+} else {
+  proteinSignal <- 
+    partition(
+      proteinData,
+      signal = "strain * sex",
+      ancillary = "sex")
+  
+  saveRDS(proteinSignal, rdsfile)
+}
+rm(rdsfile)
+```
+
+```{r warning=FALSE}
+# warnings come from overfit; ignored
+if(file.exists(rdsfile <- "proteinPvalue.rds")) {
+  proteinPvalue <- readRDS(rdsfile)
+} else {
+  proteinPvalue <-
+    broomit(
+      proteinData,
+      signal = "strain * sex",
+      ancillary = "sex") %>%
+    arrange(p_signal)
+  
+  saveRDS(proteinPvalue, rdsfile)
+}
+rm(rdsfile)
+```
+
+# Combined data
+
+```{r}
+traitData <- bind_rows(
+  calcium = readRDS("calciumCondData.rds"),
+  protein = readRDS("proteinData.rds"),
+  .id = "datatype")
+
+saveRDS(traitData, "traitData.rds")
+```
+
+```{r}
+traitSignal <- bind_rows(
+  calcium = readRDS("calciumCondSignal.rds"),
+  protein = readRDS("proteinSignal.rds"),
+  .id = "datatype"
+)
+saveRDS(traitSignal, "traitSignal.rds")
+```
+
+```{r}
+traitPvalue <- bind_rows(
+  calcium = readRDS("calciumCondPvalue.rds"),
+  protein = readRDS("proteinPvalue.rds"),
+  .id = "datatype")
+
+saveRDS(traitPvalue, "traitPvalue.rds")
+```
+
+**Still have to deal with correlation stuff (below).**
+
+# Correlations of Calcium and Protein Signals
+
+The `proteinSignal` and `calciumSignal` have values of `strain:sex + strain` with `sex` removed and averaged over animals. These are the approprate units for correlation to focus on the `signal` in each dataset. We first have to create wide data for each, then get the correlations. Note that protein data has no measurements for `NZO` `M`ales. 
+
+#### Correlations for Means and Signals
+
+```{r}
+corProteinCalciumMean <- cor(
+  proteinSignal %>%
+    arrange(trait, strain, sex) %>%
+    select(-signal) %>%
+    pivot_wider(names_from = "trait", values_from = "mean") %>%
+    select(proteinPvalue$trait),
+  calciumCondSignal %>%
+    filter(!(strain == "NZO" & sex == "M")) %>%
+    arrange(trait, strain, sex) %>%
+    select(-signal) %>%
+    pivot_wider(names_from = "trait", values_from = "mean") %>%
+    select(calciumCondPvalue$trait),
+  use = "pair")
+```
+
+```{r}
+saveRDS(corProteinCalciumMean, "corProteinCalciumMean.rds")
+```
+
+```{r}
+corProteinCalciumSignal <- cor(
+  proteinSignal %>%
+    arrange(trait, strain, sex) %>%
+    select(-mean) %>%
+    pivot_wider(names_from = "trait", values_from = "signal") %>%
+    select(proteinPvalue$trait),
+  calciumCondSignal %>%
+    filter(!(strain == "NZO" & sex == "M")) %>%
+    arrange(trait, strain, sex) %>%
+    select(-mean) %>%
+    pivot_wider(names_from = "trait", values_from = "signal") %>%
+    select(calciumCondPvalue$trait),
+  use = "pair")
+```
+
+```{r}
+saveRDS(corProteinCalciumSignal, "corProteinCalciumSignal.rds")
+```
+
+```{r}
+knitr::knit_exit()
+```
+
+# Correlations
+
+The second file (Protein_to_calcium_correlations.xlsx describes the correlation between calcium parameters and proteins measured in the same sexes and strains of mice on the same diet. It is what would be shown for the pulldown menus (like this one for the protein Apeh for example): Columns A-J describe the proteins (the peptide ID, the protein IDs, gene identifiers and human orthologues' info where there were human orthologues). Columns K onward show the correlation between the protein and the different calcium parameters we derived from our analysis tools. 
+
+One other point I forgot to mention: We had measures for the NZO males for the calcium parameters but did not use them in the correlation analysis because there were not enough islets from the NZO males to do proteomic analyses on. The Zscore calculations for both raw datasets, and the correlation coefficients calculated from them, consequently excluded the NZO males. I mention this because I think the calcium parameter excel file with the raw data has the values for the pooled NZO male islets and we may want to delete or exclude those values to prevent errors. 
+
+
+```{r}
+corfile <- linkpath("cor_prot_calc", links)
+excel_sheets(corfile)
+cacor <- read_excel(corfile, skip = 2, .name_repair = make.names) %>%
+  select(-(ID:Human.Ensembl.or.alternate)) %>%
+  rename(gene = "Human.gene.name") %>%
+  pivot_longer(-(gene), names_to = "trait", values_to = "value") %>%
+  mutate(
+    trait = str_replace(
+      str_replace(
+        str_replace(trait, "X8G", "8G"),
+        "8G\\.QLA", "8G_QLA"),
+      "8G_QLA\\.GIP", "8G_QLA_GIP"),
+    condition = str_remove(trait, "\\..*"),
+    trait = str_remove(trait, "^8[A-Z_]+\\."))
+```
+
+The animals used for protein and calcium measurements were different. Therefore, the correlations are done using measurements on the 16 strain-sex combinations, which requires averaging over the animals. Further, correlations are done separately by condition.
