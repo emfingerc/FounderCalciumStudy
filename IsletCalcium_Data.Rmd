@@ -259,29 +259,62 @@ rm(rdsfile)
 
 ```{r}
 traitData <- bind_rows(
-  calcium = readRDS("calciumCondData.rds"),
+  calcium = readRDS("calciumData.rds"),
   protein = readRDS("proteinData.rds"),
   .id = "datatype")
 
 saveRDS(traitData, "traitData.rds")
+rm(traitData)
+```
+
+```{r}
+traitCondData <- bind_rows(
+  calcium = readRDS("calciumCondData.rds"),
+  protein = readRDS("proteinData.rds"),
+  .id = "datatype")
+
+saveRDS(traitCondData, "traitCondData.rds")
+rm(traitCondData)
 ```
 
 ```{r}
 traitSignal <- bind_rows(
-  calcium = readRDS("calciumCondSignal.rds"),
+  calcium = readRDS("calciumSignal.rds"),
   protein = readRDS("proteinSignal.rds"),
   .id = "datatype"
 )
 saveRDS(traitSignal, "traitSignal.rds")
+rm(traitSignal)
+```
+
+```{r}
+traitCondSignal <- bind_rows(
+  calcium = readRDS("calciumCondSignal.rds"),
+  protein = readRDS("proteinSignal.rds"),
+  .id = "datatype"
+)
+saveRDS(traitCondSignal, "traitCondSignal.rds")
+rm(traitCondSignal)
 ```
 
 ```{r}
 traitPvalue <- bind_rows(
-  calcium = readRDS("calciumCondPvalue.rds"),
+  calcium = readRDS("calciumPvalue.rds"),
   protein = readRDS("proteinPvalue.rds"),
   .id = "datatype")
 
 saveRDS(traitPvalue, "traitPvalue.rds")
+rm(traitPvalue)
+```
+
+```{r}
+traitCondPvalue <- bind_rows(
+  calcium = readRDS("calciumCondPvalue.rds"),
+  protein = readRDS("proteinPvalue.rds"),
+  .id = "datatype")
+
+saveRDS(traitCondPvalue, "traitCondPvalue.rds")
+rm(traitCondPvalue)
 ```
 
 **Still have to deal with correlation stuff (below).**

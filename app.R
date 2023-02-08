@@ -1,15 +1,16 @@
 library(shiny)
 devtools::install_github("byandell/foundr")
 library(foundr)
+devtools::install_cran("patchwork")
 
-traitData <- readRDS("traitData.rds")
-traitPvalue <- readRDS("traitPvalue.rds")
+traitData <- readRDS("traitCondData.rds")
+traitPvalue <- readRDS("traitCondPvalue.rds")
 condition <- "sex"
 
-userDatasets <- function() {
-  c(calcium = "calcium trace measures & spectral density on 3 conditions",
-    protein = "mRNA expression on liver (different mice)")
-}
+#traitData <- readRDS("traitData.rds")
+#traitPvalue <- readRDS("traitPvalue.rds")
+#condition <- "sex_condition"
+source("foundrIsletCalcium.R") # set up app Intro material
 
 ################################################################
 
