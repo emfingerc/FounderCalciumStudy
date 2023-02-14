@@ -11,4 +11,4 @@ See also
 
 - [Resource Figure](resource_figure.pdf)
 - [Attie Lab Diabetes Database](http://diabetes.wisc.edu/)
-- GigHub: [byandell/FounderCalciumStudy](https://github.com/byandell/FounderCalciumStudy).
+- GitHub: [byandell/FounderCalciumStudy](https://github.com/byandell/FounderCalciumStudy).
