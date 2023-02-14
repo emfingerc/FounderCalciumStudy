@@ -12,4 +12,4 @@ See also
 - [Attie Lab Diabetes Database](http://diabetes.wisc.edu/)
 - GitHub: [byandell/FounderCalciumStudy](https://github.com/byandell/FounderCalciumStudy).
 
-![](https://github.com/byandell/FounderCalciumStudy/blob/main/resource_figure.png "Conditions and Parameters")
+![](https://github.com/byandell/FounderCalciumStudy/blob/main/resource_figure.png?raw=true "Conditions and Parameters")
