@@ -9,6 +9,7 @@ Distinct mice were assayed for `calcium` and `protein` (4 for `strain` and `sex`
 
 See also 
 
-- [Resource Figure](resource_figure.pdf)
 - [Attie Lab Diabetes Database](http://diabetes.wisc.edu/)
 - GitHub: [byandell/FounderCalciumStudy](https://github.com/byandell/FounderCalciumStudy).
+
+![](https://github.com/byandell/FounderCalciumStudy/blob/main/resource_figure.png "Conditions and Parameters")
