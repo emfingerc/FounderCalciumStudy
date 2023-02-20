@@ -4,7 +4,7 @@ Conditions and trait are combined for `calcium` (such as `8G:freq_8_1`) or separ
 Distinct mice were assayed for `calcium` and `protein` (4 for `strain` and `sex`).
 
 - `calcium`: calcium traces & spectral density with condition
-- `protein`: mRNA expression on liver
+- `protein`: islet proteins, measured by LC/MS of whole islet samples from the CC founder mice
 - `calcium8G`: calcium traces & spectral density by condition
 
 See also 
