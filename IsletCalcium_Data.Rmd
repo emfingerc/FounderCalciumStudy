@@ -141,7 +141,7 @@ if(file.exists(rdsfile <- "calciumCondSignal.rds")) {
 rm(rdsfile)
 ```
 
-## Calcium P-Value Summaries
+## Calcium Stats Summaries
 
 ```{r}
 if(file.exists(rdsfile <- "calciumStats.rds")) {
@@ -261,16 +261,19 @@ rm(rdsfile)
 
 ```{r}
 traitStats <- bind_rows(
-  calcium = readRDS("calciumCondStats.rds"),
+  calcium = readRDS("calciumStats.rds"),
   protein = readRDS("proteinStats.rds"),
-  calcium8G = readRDS("calciumStats.rds"),
-  .id = "datatype")
+  .id = "dataset")
 ```
 
 Drop traits that have missing p-value (due to imbalance of some pathological form).
 
 ```{r}
-dropTraits <- unique(filter(traitStats, is.na(p.value)))$trait
+dropTraits <- unique(filter(
+  filter(
+    traitStats,
+    term != "noise"),
+  is.na(p.value)))$trait
 ```
 
 ```{r}
@@ -280,10 +283,9 @@ saveRDS(traitStats, "traitStats.rds")
 
 ```{r}
 traitData <- bind_rows(
-  calcium = readRDS("calciumCondData.rds"),
+  calcium = readRDS("calciumData.rds"),
   protein = readRDS("proteinData.rds"),
-  calcium8G = readRDS("calciumData.rds"),
-  .id = "datatype")
+  .id = "dataset")
 
 traitData <- dplyr::filter(traitData, !(trait %in% dropTraits))
 saveRDS(traitData, "traitData.rds")
@@ -292,10 +294,9 @@ rm(traitData)
 
 ```{r}
 traitSignal <- bind_rows(
-  calcium = readRDS("calciumCondSignal.rds"),
+  calcium = readRDS("calciumSignal.rds"),
   protein = readRDS("proteinSignal.rds"),
-  calcium8G = readRDS("calciumSignal.rds"),
-  .id = "datatype"
+  .id = "dataset"
 )
 
 traitSignal <- dplyr::filter(traitSignal, !(trait %in% dropTraits))
