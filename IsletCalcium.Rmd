@@ -16,6 +16,36 @@ library(stringr)
 library(foundr) # github/byandell/foundr
 ```
 
+## Calcium Check
+
+```{r}
+traitSignal <- readRDS("traitSignal.rds")
+traitStats <- readRDS("traitStats.rds")
+```
+
+```{r}
+traitnames <- "calcium: PD"
+```
+
+```{r}
+out <- bestcor(traitSignal, traitnames)
+```
+
+```{r}
+ggplot_bestcor(out)
+```
+
+```{r}
+effectplot(traitStats)
+```
+
+
+```{r}
+effectplot(traitStats, "calcium: PD", 
+           foundr:::effecthelper(out, 0.7))
+```
+
+
 # Calcium data
 
 ```{r}

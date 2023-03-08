@@ -84,8 +84,8 @@ if(file.exists(rdsfile <- "calciumData.rds")) {
         rename(strain = "Strain",
                sex = "Sex",
                animal = "Animal") %>%
-        pivot_longer(-(1:4), names_to = "trait", values_to = "value") %>%
-        filter(condition != "Basal")) %>%
+        pivot_longer(-(1:4), names_to = "trait", values_to = "value")) %>%
+#        filter(condition != "Basal")) %>%
     group_by(trait) %>%
     mutate(value = foundr::nqrank(value, jitter = TRUE)) %>%
     ungroup()
@@ -95,7 +95,7 @@ if(file.exists(rdsfile <- "calciumData.rds")) {
 rm(rdsfile)
 ```
 
-```{r}
+```{r eval = FALSE}
 if(file.exists(rdsfile <- "calciumCondData.rds")) {
   calciumCondData <- readRDS(rdsfile)
 } else {
@@ -118,14 +118,14 @@ if(file.exists(rdsfile <- "calciumSignal.rds")) {
       calciumData,
       trait = "trait",
       signal = "strain * sex * condition",
-      ancillary = "strain * sex + condition * sex")
+      rest = "strain * sex + condition * sex")
 
   saveRDS(calciumSignal, rdsfile)
 }
 rm(rdsfile)
 ```
 
-```{r}
+```{r eval = FALSE}
 if(file.exists(rdsfile <- "calciumCondSignal.rds")) {
   calciumCondSignal <- readRDS(rdsfile)
 } else {
@@ -134,7 +134,7 @@ if(file.exists(rdsfile <- "calciumCondSignal.rds")) {
       calciumCondData,
       trait = "trait",
       signal = "strain * sex",
-      ancillary = "sex")
+      rest = "sex")
 
   saveRDS(calciumCondSignal, rdsfile)
 }
@@ -150,7 +150,7 @@ if(file.exists(rdsfile <- "calciumStats.rds")) {
   calciumStats <- strainstats(
     calciumData,
     signal = "strain * condition * sex",
-    ancillary = "strain * sex + condition * sex")
+    rest = "strain * sex + condition * sex")
   
   saveRDS(calciumStats, rdsfile)
 }
@@ -167,7 +167,7 @@ calciumStats %>%
   filter(p_signal < 0.1)
 ```
 
-```{r}
+```{r eval = FALSE}
 if(file.exists(rdsfile <- "calciumCondStats.rds")) {
   calciumCondStats <- readRDS(rdsfile)
 } else {
@@ -264,24 +264,18 @@ traitStats <- bind_rows(
   calcium = readRDS("calciumStats.rds"),
   protein = readRDS("proteinStats.rds"),
   .id = "dataset")
-```
 
-Drop traits that have missing p-value (due to imbalance of some pathological form).
+# Drop traits that have missing p-value (due to imbalance of some pathological form).
 
-```{r}
 dropTraits <- unique(filter(
   filter(
     traitStats,
     term != "noise"),
   is.na(p.value)))$trait
-```
 
-```{r}
 traitStats <- dplyr::filter(traitStats, !(trait %in% dropTraits))
 saveRDS(traitStats, "traitStats.rds")
-```
 
-```{r}
 traitData <- bind_rows(
   calcium = readRDS("calciumData.rds"),
   protein = readRDS("proteinData.rds"),
@@ -290,9 +284,7 @@ traitData <- bind_rows(
 traitData <- dplyr::filter(traitData, !(trait %in% dropTraits))
 saveRDS(traitData, "traitData.rds")
 rm(traitData)
-```
 
-```{r}
 traitSignal <- bind_rows(
   calcium = readRDS("calciumSignal.rds"),
   protein = readRDS("proteinSignal.rds"),
@@ -344,20 +336,20 @@ rm(traitCondSignal)
 
 The `proteinSignal` and `calciumSignal` have values of `strain:sex + strain` with `sex` removed and averaged over animals. These are the approprate units for correlation to focus on the `signal` in each dataset. We first have to create wide data for each, then get the correlations. Note that protein data has no measurements for `NZO` `M`ales. 
 
-#### Correlations for Means and Signals
+#### Correlations for Cell Means and Signals
 
 ```{r}
 corProteinCalciumMean <- cor(
   proteinSignal %>%
     arrange(trait, strain, sex) %>%
     select(-signal) %>%
-    pivot_wider(names_from = "trait", values_from = "mean") %>%
+    pivot_wider(names_from = "trait", values_from = "cellmean") %>%
     select(unique(proteinStats$trait)),
   calciumCondSignal %>%
     filter(!(strain == "NZO" & sex == "M")) %>%
     arrange(trait, strain, sex) %>%
     select(-signal) %>%
-    pivot_wider(names_from = "trait", values_from = "mean") %>%
+    pivot_wider(names_from = "trait", values_from = "cellmean") %>%
     select(unique(calciumCondStats$trait)),
   use = "pair")
 ```
@@ -367,14 +359,14 @@ corTraitMean <- cor(
   traitSignal %>%
     arrange(trait, strain, sex) %>%
     select(-signal) %>%
-    pivot_wider(names_from = "trait", values_from = "mean") %>%
+    pivot_wider(names_from = "trait", values_from = "cellmean") %>%
     select(unique(traitStats$trait)),
   use = "pair")
 ```
 
 ```{r}
 traits <- unique(traitStats$trait)[1:2]
-bestcor <- function(object, traits, term = c("signal", "mean")) {
+bestcor <- function(object, traits, term = c("signal", "cellmean")) {
   term <- match.arg(term)
   
   # Need to check if condition is present.
@@ -385,13 +377,13 @@ bestcor <- function(object, traits, term = c("signal", "mean")) {
   object %>%
     select(-datatype, -signal) %>%
     arrange(trait, strain, sex) %>%
-    pivot_wider(names_from = "trait", values_from = "mean") %>%
+    pivot_wider(names_from = "trait", values_from = "cellmean") %>%
     select(-strain, -sex),
   object %>%
     filter(trait %in% traits) %>%
     select(-datatype, -signal) %>%
     arrange(trait, strain, sex) %>%
-    pivot_wider(names_from = "trait", values_from = "mean") %>%
+    pivot_wider(names_from = "trait", values_from = "cellmean") %>%
     select(-strain, -sex),
   use = "pair"),
   1, function(x) max(abs(x))),
@@ -419,13 +411,13 @@ saveRDS(corProteinCalciumMean, "corProteinCalciumMean.rds")
 corProteinCalciumSignal <- cor(
   proteinSignal %>%
     arrange(trait, strain, sex) %>%
-    select(-mean) %>%
+    select(-cellmean) %>%
     pivot_wider(names_from = "trait", values_from = "signal") %>%
     select(proteinStats$trait),
   calciumCondSignal %>%
     filter(!(strain == "NZO" & sex == "M")) %>%
     arrange(trait, strain, sex) %>%
-    select(-mean) %>%
+    select(-cellmean) %>%
     pivot_wider(names_from = "trait", values_from = "signal") %>%
     select(calciumCondStats$trait),
   use = "pair")
