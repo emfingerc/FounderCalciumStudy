@@ -5,7 +5,7 @@ Distinct mice were assayed for `calcium` and `protein` (4 for `strain` and `sex`
 
 - `calcium`: calcium traces & spectral density with condition
 - `protein`: mRNA expression on liver
-- `calcium8G`: calcium traces & spectral density by condition
+- `basal`: calcium basal measurements
 
 See also 
 

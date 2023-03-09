@@ -70,6 +70,7 @@ if(file.exists(rdsfile <- "calciumData.rds")) {
 } else {
   calciumData <- 
     bind_rows(
+      # Spectral density data
       read_excel(calcfile, sheet = 1) %>%
         rename(freq_8_1 = "8 1st freq.",
                freq_8_2 = "8 2nd freq.",
@@ -79,6 +80,7 @@ if(file.exists(rdsfile <- "calciumData.rds")) {
                sex = "Sex") %>%
         select(strain, sex, animal, condition, everything()) %>%
         pivot_longer(-(strain:condition), names_to = "trait", values_to = "value"),
+      # Matlab by animal
       read_excel(calcfile, sheet = 2) %>%
         select(Strain, Sex, Animal, condition, everything()) %>%
         rename(strain = "Strain",
@@ -181,6 +183,62 @@ if(file.exists(rdsfile <- "calciumCondStats.rds")) {
 rm(rdsfile)
 ```
 
+# Calcium Basal data
+
+```{r}
+if(file.exists(rdsfile <- "basalData.rds")) {
+  basalData <- readRDS(rdsfile)
+} else {
+  basalData <- 
+    read_excel(calcfile, sheet = 2) %>%
+    select(Strain, Sex, Animal, condition, everything()) %>%
+    rename(strain = "Strain",
+           sex = "Sex",
+           animal = "Animal") %>%
+    pivot_longer(-(1:4), names_to = "trait", values_to = "value") %>%
+    filter(condition == "Basal") %>%
+    select(-condition) %>%
+    group_by(trait) %>%
+    mutate(value = foundr::nqrank(value, jitter = TRUE)) %>%
+    ungroup() %>%
+    filter(!is.na(value)) %>%
+    filter(!is.nan(value))
+
+  saveRDS(basalData, rdsfile)
+}
+rm(rdsfile)
+```
+
+```{r}
+if(file.exists(rdsfile <- "basalSignal.rds")) {
+  basalSignal <- readRDS(rdsfile)
+} else {
+  basalSignal <- 
+    partition(
+      basalData,
+      trait = "trait",
+      signal = "strain * sex",
+      rest = "sex")
+
+  saveRDS(basalSignal, rdsfile)
+}
+rm(rdsfile)
+```
+
+```{r}
+if(file.exists(rdsfile <- "basalStats.rds")) {
+  basalStats <- readRDS(rdsfile)
+} else {
+  basalStats <- strainstats(
+    basalData,
+    signal = "strain * sex",
+    rest = "sex")
+  
+  saveRDS(basalStats, rdsfile)
+}
+rm(rdsfile)
+```
+
 # Protein data
 
 ```{r}
@@ -263,6 +321,7 @@ rm(rdsfile)
 traitStats <- bind_rows(
   calcium = readRDS("calciumStats.rds"),
   protein = readRDS("proteinStats.rds"),
+  basal = readRDS("basalStats.rds"),
   .id = "dataset")
 
 # Drop traits that have missing p-value (due to imbalance of some pathological form).
@@ -279,6 +338,7 @@ saveRDS(traitStats, "traitStats.rds")
 traitData <- bind_rows(
   calcium = readRDS("calciumData.rds"),
   protein = readRDS("proteinData.rds"),
+  basal = readRDS("basalData.rds"),
   .id = "dataset")
 
 traitData <- dplyr::filter(traitData, !(trait %in% dropTraits))
@@ -288,6 +348,7 @@ rm(traitData)
 traitSignal <- bind_rows(
   calcium = readRDS("calciumSignal.rds"),
   protein = readRDS("proteinSignal.rds"),
+  basal = readRDS("basalSignal.rds"),
   .id = "dataset"
 )
 
