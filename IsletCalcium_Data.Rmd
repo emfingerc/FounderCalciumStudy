@@ -176,7 +176,7 @@ if(file.exists(rdsfile <- "calciumCondStats.rds")) {
   calciumCondStats <- strainstats(
     calciumCondData,
     signal = "strain * sex",
-    ancillary = "sex")
+    rest = "sex")
   
   saveRDS(calciumCondStats, rdsfile)
 }
@@ -292,7 +292,7 @@ if(file.exists(rdsfile <- "proteinSignal.rds")) {
     partition(
       proteinData,
       signal = "strain * sex",
-      ancillary = "sex")
+      rest = "sex")
   
   saveRDS(proteinSignal, rdsfile)
 }
@@ -308,7 +308,7 @@ if(file.exists(rdsfile <- "proteinStats.rds")) {
     strainstats(
       proteinData,
       signal = "strain * sex",
-      ancillary = "sex")
+      rest = "sex")
   
   saveRDS(proteinStats, rdsfile)
 }
