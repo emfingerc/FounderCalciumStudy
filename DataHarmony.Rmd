@@ -1,0 +1,46 @@
+---
+title: "Data Harmony"
+author: "Brian Yandell"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(readr)
+library(foundr) # github/byandell/foundr
+```
+
+```{r}
+for(filename in list.files("R", full.names = TRUE)) {
+  source(filename)
+}
+```
+
+# Harmonize Data
+
+```{r}
+links <- read.csv(file.path("data", "source.csv"), fill = TRUE)
+```
+
+```{r}
+harmonize("calcium", links, CalciumHarmony)
+```
+
+```{r}
+harmonize("protein", links, ProteinHarmony)
+```
+
+```{r}
+harmonize("basal", links, BasalHarmony)
+```
+
+```{r}
+bind_traits(c("calcium","protein","basal"))
+```
+
