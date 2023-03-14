@@ -6,7 +6,7 @@ userDatasets <- function() {
     "Distinct mice were assayed for calcium and protein (4 for strain and sex).",
     tags$ul(
       tags$li("calcium: calcium traces & spectral density with condition"),
-      tags$li("protein: mRNA expression on liver"),
+      tags$li("protein: islet protein expression"),
       tags$li("calcium8G: calcium traces & spectral density by condition")),
     "See also",
     shiny::a("Attie Lab Diabetes Database", href = "http://diabetes.wisc.edu/"),
